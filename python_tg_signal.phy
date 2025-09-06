@@ -1,0 +1,32 @@
+import os
+import json
+import urllib.request
+import urllib.parse
+
+def lambda_handler(event, context):
+    try:
+        body = json.loads(event.get("body") or "{}")
+        msg = body["message"]
+
+        bot_token = os.getenv("BOT_TOKEN")
+        chat_id = os.getenv("CHAT_ID")
+        if not bot_token or not chat_id:
+            return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID env var"}
+
+        # Use urllib instead of requests
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
+        
+        req = urllib.request.Request(url, data=data, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status != 200:
+                raise Exception(f"Telegram API returned status {response.status}")
+        
+        return {"statusCode": 200, "body": "ok"}
+
+    except KeyError:
+        return {"statusCode": 400, "body": 'Missing "message" key in payload'}
+    except urllib.error.URLError as e:
+        return {"statusCode": 502, "body": f"Telegram API error: {e}"}
+    except Exception as e:
+        return {"statusCode": 500, "body": f"Unexpected error: {e}"}
