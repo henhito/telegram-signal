@@ -4,16 +4,33 @@ import urllib.request
 import urllib.parse
 
 def lambda_handler(event, context):
+    print("🚨 LAMBDA STARTED")
+    
     try:
-        body = json.loads(event.get("body") or "{}")
-        msg = body["message"]
+        body_raw = event.get("body", "")
+        print(f"🔍 RAW BODY: {body_raw}")
+        print(f"🔍 BODY TYPE: {type(body_raw)}")
+        
+        # Handle both JSON and plain text from TradingView
+        if body_raw.startswith('{"') and body_raw.endswith('}'):
+            # It's JSON format (like your curl tests)
+            print("📄 PARSING AS JSON")
+            body = json.loads(body_raw)
+            msg = body["message"]
+        else:
+            # It's plain text from TradingView (like your actual alerts)
+            print("📄 USING PLAIN TEXT FROM TRADINGVIEW")
+            msg = body_raw
+        
+        print(f"✅ FINAL MESSAGE: {msg}")
 
         bot_token = os.getenv("BOT_TOKEN")
         chat_id = os.getenv("CHAT_ID")
+        
         if not bot_token or not chat_id:
-            return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID env var"}
+            return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID"}
 
-        # Use urllib instead of requests
+        # Send to Telegram
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
         
@@ -22,11 +39,9 @@ def lambda_handler(event, context):
             if response.status != 200:
                 raise Exception(f"Telegram API returned status {response.status}")
         
+        print("✅ TELEGRAM MESSAGE SENT SUCCESSFULLY")
         return {"statusCode": 200, "body": "ok"}
 
-    except KeyError:
-        return {"statusCode": 400, "body": 'Missing "message" key in payload'}
-    except urllib.error.URLError as e:
-        return {"statusCode": 502, "body": f"Telegram API error: {e}"}
-    except Exception as e:
-        return {"statusCode": 500, "body": f"Unexpected error: {e}"}
+    except Exception as error:
+        print(f"❌ ERROR: {str(error)}")
+        return {"statusCode": 500, "body": f"Error: {str(error)}"}
