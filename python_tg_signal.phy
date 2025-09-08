@@ -4,29 +4,63 @@ import urllib.request
 import urllib.parse
 
 def lambda_handler(event, context):
+    print("🚨 LAMBDA STARTED")
+    print(f"🔍 RAW EVENT: {json.dumps(event, indent=2)}")
+    
     try:
-        body = json.loads(event.get("body") or "{}")
+        print(f"🔍 EVENT BODY TYPE: {type(event.get('body'))}")
+        print(f"🔍 EVENT BODY VALUE: {event.get('body')}")
+        
+        # Check if body is already parsed or needs parsing
+        body_raw = event.get("body")
+        if isinstance(body_raw, str):
+            print("📄 BODY IS STRING - PARSING JSON")
+            body = json.loads(body_raw or "{}")
+        else:
+            print("📄 BODY IS ALREADY DICT")
+            body = body_raw or {}
+        
+        print(f"🔍 PARSED BODY: {body}")
+        
+        if "message" not in body:
+            print(f"❌ NO 'message' KEY FOUND. Available keys: {list(body.keys())}")
+            return {"statusCode": 400, "body": 'Missing "message" key in payload'}
+            
         msg = body["message"]
+        print(f"✅ EXTRACTED MESSAGE: {msg}")
 
         bot_token = os.getenv("BOT_TOKEN")
         chat_id = os.getenv("CHAT_ID")
+        print(f"🔑 BOT_TOKEN EXISTS: {bool(bot_token)}")
+        print(f"🔑 CHAT_ID EXISTS: {bool(chat_id)}")
+        
         if not bot_token or not chat_id:
+            print("❌ MISSING ENVIRONMENT VARIABLES")
             return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID env var"}
 
         # Use urllib instead of requests
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
+        print(f"📤 SENDING TO TELEGRAM: {msg}")
         
         req = urllib.request.Request(url, data=data, method='POST')
         with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
+                print(f"❌ TELEGRAM API ERROR: {response.status}")
                 raise Exception(f"Telegram API returned status {response.status}")
         
+        print("✅ TELEGRAM MESSAGE SENT SUCCESSFULLY")
         return {"statusCode": 200, "body": "ok"}
 
-    except KeyError:
-        return {"statusCode": 400, "body": 'Missing "message" key in payload'}
+    except KeyError as e:
+        print(f"❌ KEY ERROR: {e}")
+        return {"statusCode": 400, "body": f'Missing key: {e}'}
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON PARSE ERROR: {e}")
+        return {"statusCode": 400, "body": f'Invalid JSON: {e}'}
     except urllib.error.URLError as e:
+        print(f"❌ URLLIB ERROR: {e}")
         return {"statusCode": 502, "body": f"Telegram API error: {e}"}
     except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {e}")
         return {"statusCode": 500, "body": f"Unexpected error: {e}"}
