@@ -133,81 +133,53 @@ Stop 2435
 > Drop this into `lambda_function.py`. No external libraries required.
 
 ```python
-import os, json, base64, time
-import urllib.request, urllib.parse, urllib.error
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")  # optional
-API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-
-def _extract_body(event):
-    body = event.get("body") or ""
-    if event.get("isBase64Encoded"):
-        body = base64.b64decode(body).decode("utf-8", "replace")
-    headers = { (k or "").lower(): (v or "") for k, v in (event.get("headers") or {}).items() }
-    ctype = headers.get("content-type","").lower()
-    if "application/json" in ctype:
-        try:
-            obj = json.loads(body)
-            return obj, headers, True
-        except json.JSONDecodeError:
-            pass
-    return body, headers, False
-
-def _extract_secret(body, headers, is_json):
-    if "x-webhook-token" in headers:
-        return headers["x-webhook-token"].strip()
-    if is_json and isinstance(body, dict):
-        return (body.get("token") or body.get("secret") or "").strip()
-    text = body if isinstance(body, str) else ""
-    first = text.splitlines()[0].strip().lower() if text else ""
-    for key in ("token:", "secret:"):
-        if first.startswith(key):
-            return first.replace(key, "", 1).strip()
-    return ""
-
-def _extract_message(body, is_json):
-    if is_json and isinstance(body, dict):
-        return (body.get("message") or body.get("text") or "").strip()
-    return (body if isinstance(body, str) else "").strip()
-
-def _send(text):
-    data = urllib.parse.urlencode({"chat_id": CHAT_ID, "text": text}).encode()
-    for attempt in range(3):
-        try:
-            req = urllib.request.Request(API_URL, data=data, method="POST")
-            with urllib.request.urlopen(req, timeout=10) as r:
-                payload = r.read().decode("utf-8", "replace")
-                resp = json.loads(payload)
-                if not resp.get("ok"):
-                    raise RuntimeError(f"Telegram error: {resp}")
-                return
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as e:
-            if attempt == 2:
-                raise
-            time.sleep(0.5 * (2 ** attempt))
+import os
+import json
+import urllib.request
+import urllib.parse
 
 def lambda_handler(event, context):
-    if not BOT_TOKEN or not CHAT_ID:
-        return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID"}
+    print("🚨 LAMBDA STARTED")
+    
+    try:
+        body_raw = event.get("body", "")
+        print(f"🔍 RAW BODY: {body_raw}")
+        print(f"🔍 BODY TYPE: {type(body_raw)}")
+        
+        # Handle both JSON and plain text from TradingView
+        if body_raw.startswith('{"') and body_raw.endswith('}'):
+            # It's JSON format (like your curl tests)
+            print("📄 PARSING AS JSON")
+            body = json.loads(body_raw)
+            msg = body["message"]
+        else:
+            # It's plain text from TradingView (like your actual alerts)
+            print("📄 USING PLAIN TEXT FROM TRADINGVIEW")
+            msg = body_raw
+        
+        print(f"✅ FINAL MESSAGE: {msg}")
 
-    body, headers, is_json = _extract_body(event)
+        bot_token = os.getenv("BOT_TOKEN")
+        chat_id = os.getenv("CHAT_ID")
+        
+        if not bot_token or not chat_id:
+            return {"statusCode": 500, "body": "Missing BOT_TOKEN or CHAT_ID"}
 
-    if WEBHOOK_SECRET:
-        provided = _extract_secret(body, headers, is_json)
-        if provided != WEBHOOK_SECRET:
-            return {"statusCode": 401, "body": "Unauthorized"}
+        # Send to Telegram
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
+        
+        req = urllib.request.Request(url, data=data, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status != 200:
+                raise Exception(f"Telegram API returned status {response.status}")
+        
+        print("✅ TELEGRAM MESSAGE SENT SUCCESSFULLY")
+        return {"statusCode": 200, "body": "ok"}
 
-    msg = _extract_message(body, is_json)
-    if not msg:
-        return {"statusCode": 400, "body": "Empty body"}
-
-    # Split for Telegram 4096-char limit
-    for i in range(0, len(msg), 4096):
-        _send(msg[i:i+4096])
-
-    return {"statusCode": 200, "body": "ok"}
+    except Exception as error:
+        print(f"❌ ERROR: {str(error)}")
+        return {"statusCode": 500, "body": f"Error: {str(error)}"}
 ```
 
 ---
