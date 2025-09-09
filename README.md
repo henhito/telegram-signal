@@ -212,6 +212,65 @@ def lambda_handler(event, context):
 
 ---
 
+## Telegram & Cornix Wiring
+
+This project uses **Telegram** as the distribution layer and **Cornix** as the signal parser/execution layer.
+
+### 1) Create your Telegram Bot & Channel
+
+1. In Telegram, talk to **@BotFather** → `/newbot` → copy the **bot token** (set as `BOT_TOKEN` in Lambda).
+2. Create a **Telegram Channel** (public `@handle` or private). This channel is your **signal source** (set its ID/handle as `CHAT_ID` in Lambda).
+3. Add your bot **as an Admin** of the channel (can post messages). If the channel is private, adding the bot is required so it can post.
+4. Get the channel ID:  
+   - For public: use `@yourchannelhandle`  
+   - For private: numeric id like `-100xxxxxxxxxx` (you can obtain it via Telegram API `getUpdates` or tools like `@userinfobot`).
+
+> The Lambda posts the incoming webhook text **into this channel**.
+
+### 2) Connect the channel to Cornix
+
+Cornix watches your Telegram channel and parses each new message:
+- In **Cornix Admin** (or app), add your **Signal Source** = your Telegram Channel.
+- Add the **Cornix Bot** (or the bot specified by Cornix for your plan) **as an Admin** in the same channel so it can read/process messages.
+- Ensure your messages follow **Cornix Free Text** or **Publish Signal** formats (numeric entries/TP/SL, e.g., `Buy 2460`, `Sell 2475 2490`, `Stop 2435`).
+
+> Flow: **Lambda → Telegram Channel (signal source) → Cornix Bot → Users’ Exchange Accounts**.  
+> Cornix executes trades on the subscribers’ exchanges via their **API keys** configured within Cornix, based on your parsed signals.
+
+### 3) Message format tips for Cornix parsing
+
+- Use `BASE/QUOTE` pairs (e.g., `ETH/USDT`), **numbers** for entries/TP/SL, and optional `Leverage 1x`.
+- Avoid “Market Price” (use numeric price or `Buy at current price`) and avoid percentage-only TP like `0.3%`. Provide numbers.
+- Minimize emojis/decoration to reduce parsing ambiguity.
+- You can still post non-Cornix messages; Cornix will ignore what it can’t parse.
+
+**Example (Cornix-friendly):**
+```
+ETH/USDT
+Leverage 1x
+Buy zone 2455-2465
+Sell 2475 2490 2510
+Stop 2435
+```
+
+### 4) Testing the pipeline
+
+1. `curl` → API Gateway → confirm Lambda returns `200 ok`.
+2. Verify the message **appears in your Telegram channel**.
+3. Confirm **Cornix** shows the parsed signal (and, if enabled, posts the follow button / executes per user settings).
+
+### 5) Operational notes
+
+- **Bot token security**: rotate if ever exposed (via `@BotFather`) and update the Lambda env var.
+- **Channel admin rights**: both your bot and the Cornix bot must be admins (read/post as needed).
+- **Scaling**: Cornix limits publish rate; throttle upstream if you generate bursts.
+- **Auditability**: use channel history as an immutable log of signals; optionally mirror to an S3 bucket via a secondary Lambda subscriber.
+
+---
+
+
+---
+
 ## Deployment
 
 ### Option 1 — Console (quick)
