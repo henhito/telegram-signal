@@ -7,7 +7,6 @@ import re
 def _rewrite_buy_lines(msg: str) -> str:
     out = []
     for line in msg.splitlines():
-        # remove leading bullets/emojis/punctuation for matching
         headless = re.sub(r'^\W+', '', line.strip(), flags=re.UNICODE)
         if re.fullmatch(r'(?i)buy[:\-]*\s*', headless):
             out.append('Buy at current price')
@@ -15,17 +14,43 @@ def _rewrite_buy_lines(msg: str) -> str:
             out.append(line)
     return "\n".join(out)
 
+def _bump_tp_by_pct(msg: str, pct: float = 0.28) -> str:
+    """Find lines with TP/Take Profit that end in a number and bump that number by +/- pct."""
+    is_short = bool(re.search(r'(?i)\bshort\b', msg))
+    sign = -1 if is_short else 1
+    lines, out = msg.splitlines(), []
+    for ln in lines:
+        if re.search(r'(?i)\b(tp|take\s*profit)\b', ln) and re.search(r'\d', ln):
+            m = re.search(r'(\d+(?:\.\d+)?)\s*$', ln)
+            if m:
+                base_txt = m.group(1)
+                base = float(base_txt)
+                decimals = len(base_txt.split('.')[1]) if '.' in base_txt else 2
+                new = base * (1 + sign * (pct / 100.0))
+                ln = ln[:m.start(1)] + f"{new:.{decimals}f}" + ln[m.end(1):]
+        out.append(ln)
+    return "\n".join(out)
+
 def lambda_handler(event, context):
+    print("🚨 LAMBDA STARTED")
     try:
         body_raw = event.get("body", "") or ""
+        print(f"🔍 RAW BODY: {body_raw}")
+        print(f"🔍 BODY TYPE: {type(body_raw)}")
+
         if body_raw.startswith('{"') and body_raw.endswith('}'):
+            print("📄 PARSING AS JSON")
             body = json.loads(body_raw)
             msg = body["message"]
         else:
+            print("📄 USING PLAIN TEXT FROM TRADINGVIEW")
             msg = body_raw
 
-        # >>> apply the rewrite here <<<
+        # Apply transformations
         msg = _rewrite_buy_lines(msg)
+        msg = _bump_tp_by_pct(msg, pct=0.28)  # <-- add +0.28% (or -0.28% if 'Short' present)
+
+        print(f"✅ FINAL MESSAGE: {msg}")
 
         bot_token = os.getenv("BOT_TOKEN")
         chat_id = os.getenv("CHAT_ID")
@@ -38,7 +63,10 @@ def lambda_handler(event, context):
         with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
                 raise Exception(f"Telegram API returned status {response.status}")
+
+        print("✅ TELEGRAM MESSAGE SENT SUCCESSFULLY")
         return {"statusCode": 200, "body": "ok"}
 
     except Exception as error:
+        print(f"❌ ERROR: {str(error)}")
         return {"statusCode": 500, "body": f"Error: {str(error)}"}
