@@ -14,7 +14,7 @@ def _rewrite_buy_lines(msg: str) -> str:
             out.append(line)
     return "\n".join(out)
 
-def _bump_tp_by_pct(msg: str, pct: float = 0.28) -> str:
+def _bump_tp_by_pct(msg: str, pct: float = 0.3) -> str:
     """Find lines with TP/Take Profit that end in a number and bump that number by +/- pct."""
     is_short = bool(re.search(r'(?i)\bshort\b', msg))
     sign = -1 if is_short else 1
@@ -48,7 +48,7 @@ def lambda_handler(event, context):
 
         # Apply transformations
         msg = _rewrite_buy_lines(msg)
-        msg = _bump_tp_by_pct(msg, pct=0.28)  # <-- add +0.28% (or -0.28% if 'Short' present)
+        msg = _bump_tp_by_pct(msg, pct=0.3)  # <-- add +0.3% (or -0.3% if 'Short' present)
 
         print(f"✅ FINAL MESSAGE: {msg}")
 
