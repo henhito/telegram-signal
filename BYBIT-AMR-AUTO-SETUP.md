@@ -261,14 +261,29 @@ eu-north-1
 
 Choose one Region and keep using that same Region throughout this guide.
 
-The examples use:
+For consistency, this guide uses:
 
 ```text
 Europe (Stockholm)
 eu-north-1
 ```
 
-but you can use another Region.
+**Do not assume Stockholm will already be selected.** AWS can open the Console in a different Region depending on your account, your previous session, or the service you last used.
+
+Before creating each of these resources, look at the **Region selector in the top-right of the AWS Console** and make sure it says:
+
+```text
+Europe (Stockholm)
+eu-north-1
+```
+
+Check this before creating:
+
+- Systems Manager → Parameter Store
+- Lambda
+- EventBridge Scheduler
+
+Some AWS services, such as **IAM (Identity and Access Management)**, are global rather than regional, so they may not show a Region in the same way.
 
 The important rule is:
 
