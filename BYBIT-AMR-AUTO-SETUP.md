@@ -38,6 +38,7 @@ You do not need to memorise these terms. This table is here so that when AWS or 
 | **Parameter Store** | An AWS place for storing values. In this guide it stores the Bybit API key and API secret. |
 | **SecureString** | A Parameter Store value that is stored encrypted rather than as ordinary readable text. |
 | **IAM** | **Identity and Access Management**. AWS permissions. It controls what the Lambda is allowed to do. |
+| **SSM** | **Systems Manager**. AWS still uses the letters `ssm` in technical names such as `ssm:GetParameter` and `alias/aws/ssm`. If you see SSM in this guide or in AWS, think **Systems Manager**. |
 | **Execution role** | The set of AWS permissions given to the Lambda function. |
 | **ARN** | **Amazon Resource Name**. AWS's unique full name for a resource. We copy the ARN from the screen rather than trying to build it ourselves. |
 | **KMS** | **Key Management Service**. AWS's encryption-key service. Parameter Store uses it to encrypt and decrypt SecureString values. |
@@ -52,7 +53,8 @@ You do not need to memorise these terms. This table is here so that when AWS or 
 | **Root user** | The owner-level login for an AWS account. It has complete control, so protect it carefully. |
 | **MFA** | **Multi-Factor Authentication**. A second security check, usually an authenticator app or security key, in addition to your password. |
 | **JSON** | A simple text format used to pass structured information between systems. You only copy the small examples shown in this guide. |
-| **HTTPS** | Encrypted web traffic. The Lambda uses HTTPS to talk securely to Bybit. |
+| **HTTPS** | **Hypertext Transfer Protocol Secure**. Encrypted web traffic. The Lambda uses HTTPS to talk securely to Bybit. |
+| **IP address** | **Internet Protocol address**. The network address a device or service appears to use on the internet. This version does not rely on a fixed Lambda IP address. |
 
 ---
 
@@ -218,11 +220,14 @@ https://docs.aws.amazon.com/accounts/latest/reference/sign-in-new.html
 
 ## 8. Secure the AWS account with MFA
 
-**MFA means Multi-Factor Authentication.** It adds a second security check to the AWS owner login.
+**MFA means Multi-Factor Authentication.** It adds a second security check to your AWS sign-in.
 
-AWS requires root-user MFA to be configured. Do this before continuing if AWS has not already prompted you.
+AWS now has more than one sign-up experience, so what you see can differ:
 
-To find it in the AWS Console:
+- if your account uses the traditional **root user** sign-in, AWS requires root-user MFA to be configured
+- if you signed up through the newer AWS sign-in experience using an identity such as Google, GitHub, Apple, Amazon or an AWS Builder ID, follow the security/MFA prompts shown for that sign-in
+
+If you have a traditional root-user account, you can normally find the setting here:
 
 1. Sign in to AWS.
 2. Click your **account name/menu in the top-right**.
@@ -234,7 +239,7 @@ To find it in the AWS Console:
 AWS root-user security guidance:  
 https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html
 
-The **root user** is the owner-level login for the whole AWS account. Do not create AWS access keys for the root user and do not share the root-user password.
+The **root user** is the owner-level login for the whole AWS account. If your account has one, do not create AWS access keys for it and do not share its password.
 
 ---
 
@@ -374,7 +379,7 @@ Do not put these values in GitHub, Lambda source code, screenshots, chat message
 
 # Part B — Store the credentials in AWS
 
-## 9. Choose your AWS Region
+## 15. Choose your AWS Region
 
 Log in to the AWS Console:
 
@@ -395,7 +400,7 @@ You can use a different AWS Region. The important thing is to stay in the same R
 
 ---
 
-## 10. Open Parameter Store
+## 16. Open Parameter Store
 
 In the AWS Console search bar at the top, search for:
 
@@ -418,7 +423,7 @@ https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-create-co
 
 ---
 
-## 11. Create the API key parameter
+## 17. Create the API key parameter
 
 Create the first parameter with these values:
 
@@ -444,7 +449,7 @@ Save it.
 
 ---
 
-## 12. Create the API secret parameter
+## 18. Create the API secret parameter
 
 Create a second parameter:
 
@@ -474,7 +479,7 @@ Do not put quotation marks around either value.
 
 # Part C — Create the Lambda function
 
-## 13. Open AWS Lambda
+## 19. Open AWS Lambda
 
 At the top of the AWS Console, confirm you are still in the **same Region** you used for Parameter Store.
 
@@ -519,7 +524,7 @@ Click **Create function**.
 
 # Part D — Give Lambda permission to read the credentials
 
-## 14. Find the Lambda execution role
+## 20. Find the Lambda execution role
 
 Open:
 
@@ -545,7 +550,7 @@ This opens AWS IAM.
 
 ---
 
-## 15. Create an inline IAM policy
+## 21. Create an inline IAM policy
 
 On the IAM role page:
 
@@ -562,7 +567,7 @@ We need the Lambda's **execution role**.
 
 ---
 
-## 16. Find the two Parameter Store ARNs
+## 22. Find the two Parameter Store ARNs
 
 Before pasting the IAM policy, get the exact ARN for each parameter.
 
@@ -599,7 +604,7 @@ You do not need to manually work out your AWS account number or Region because t
 
 ---
 
-## 17. Paste the IAM policy
+## 23. Paste the IAM policy
 
 Back in:
 
@@ -649,7 +654,7 @@ Leave the existing **AWSLambdaBasicExecutionRole** permission in place. Lambda u
 
 # Part E — Add the AMR Lambda code
 
-## 18. Open the Lambda code editor
+## 24. Open the Lambda code editor
 
 Return to:
 
@@ -672,7 +677,7 @@ Paste the complete code below.
 
 ---
 
-## 19. AMR manager code
+## 25. AMR manager code
 
 The code starts in **DRY RUN** mode.
 
@@ -949,7 +954,7 @@ The two Parameter Store names are already included.
 
 # Part F — Test without changing a position
 
-## 20. Deploy the code
+## 26. Deploy the code
 
 At the top of the Lambda code editor click:
 
@@ -961,7 +966,7 @@ Wait for the confirmation that the function was updated.
 
 ---
 
-## 21. Create a Lambda test
+## 27. Create a Lambda test
 
 Click **Test**.
 
@@ -1018,7 +1023,7 @@ There is no need to open a new trade solely to test the Lambda.
 
 # Part G — Turn automatic AMR on
 
-## 22. Disable dry-run mode
+## 28. Disable dry-run mode
 
 Once the dry-run result is correct, change only this line:
 
@@ -1062,7 +1067,7 @@ This confirms the Lambda is safe to run repeatedly.
 
 ---
 
-## 23. Confirm AMR in the Bybit app
+## 29. Confirm AMR in the Bybit app
 
 In the Bybit mobile app:
 
@@ -1083,7 +1088,7 @@ https://www.bybit.com/en/help-center/article/Auto-Margin-Replenishment
 
 # Part H — Run the check automatically every minute
 
-## 24. Open Amazon EventBridge Scheduler
+## 30. Open Amazon EventBridge Scheduler
 
 In the AWS Console, first confirm the Region in the top-right is the **same Region as the Lambda**.
 
@@ -1106,7 +1111,7 @@ https://docs.aws.amazon.com/scheduler/latest/UserGuide/getting-started.html
 
 ---
 
-## 25. Create the schedule
+## 31. Create the schedule
 
 Use:
 
@@ -1131,7 +1136,7 @@ Click **Next**.
 
 ---
 
-## 26. Choose the Lambda target
+## 32. Choose the Lambda target
 
 For the target choose:
 
@@ -1193,7 +1198,7 @@ The Lambda only cares that the position exists in the Bybit subaccount.
 
 # Part J — Checking that it is running
 
-## 27. Check Lambda monitoring
+## 33. Check Lambda monitoring
 
 Open:
 
@@ -1567,6 +1572,7 @@ If you use a Paid plan, consider creating a small **AWS Budget** alert so AWS em
 | AWS | Amazon Web Services | Runs the automatic AMR checker. |
 | API | Application Programming Interface | Lets Lambda communicate with Bybit. |
 | IAM | Identity and Access Management | Controls AWS permissions. |
+| SSM | Systems Manager | Older/service shorthand AWS still uses in permission names and the `aws/ssm` encryption-key alias. |
 | ARN | Amazon Resource Name | Unique full name of an AWS resource. |
 | KMS | Key Management Service | Encrypts/decrypts SecureString values. |
 | MFA | Multi-Factor Authentication | Extra sign-in security. |
@@ -1578,6 +1584,7 @@ If you use a Paid plan, consider creating a small **AWS Budget** alert so AWS em
 | EC2 | Elastic Compute Cloud | AWS virtual server service; not required here. |
 | JSON | JavaScript Object Notation | Structured text format used by APIs and Lambda test events. |
 | HTTPS | Hypertext Transfer Protocol Secure | Encrypted web connection used to reach Bybit. |
+| IP | Internet Protocol | Network-address terminology; this simple Lambda setup does not have a fixed outbound IP. |
 | GB-second | Gigabyte-second | AWS Lambda compute billing unit combining memory and running time. |
 
 ---
